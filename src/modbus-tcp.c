@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <syslog.h>
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
@@ -66,14 +67,15 @@ static int _modbus_tcp_init_win32(void)
 {
     /* Initialise Windows Socket API */
     WSADATA wsaData;
-
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        fprintf(stderr,
+        syslog(LOG_INFO,
                 "WSAStartup() returned error code %d\n",
                 (unsigned int) GetLastError());
         errno = EIO;
         return -1;
     }
+    closelog();
     return 0;
 }
 #endif
@@ -196,11 +198,12 @@ static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
                                               const uint8_t *rsp,
                                               int rsp_length)
 {
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     unsigned int protocol_id;
     /* Check transaction ID */
     if (req[0] != rsp[0] || req[1] != rsp[1]) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_INFO,
                     "Invalid transaction ID received 0x%X (not 0x%X)\n",
                     (rsp[0] << 8) + rsp[1],
                     (req[0] << 8) + req[1]);
@@ -213,12 +216,12 @@ static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
     protocol_id = (rsp[2] << 8) + rsp[3];
     if (protocol_id != 0x0) {
         if (ctx->debug) {
-            fprintf(stderr, "Invalid protocol ID received 0x%X (not 0x0)\n", protocol_id);
+            syslog(LOG_INFO, "Invalid protocol ID received 0x%X (not 0x0)\n", protocol_id);
         }
         errno = EMBBADDATA;
         return -1;
     }
-
+    closelog();
     return 0;
 }
 
@@ -318,7 +321,7 @@ static int _modbus_tcp_connect(modbus_t *ctx)
     struct sockaddr_in addr;
     modbus_tcp_t *ctx_tcp = ctx->backend_data;
     int flags = SOCK_STREAM;
-
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 #ifdef OS_WIN32
     if (_modbus_tcp_init_win32() == -1) {
         return -1;
@@ -354,7 +357,7 @@ static int _modbus_tcp_connect(modbus_t *ctx)
     rc = inet_pton(addr.sin_family, ctx_tcp->ip, &(addr.sin_addr));
     if (rc <= 0) {
         if (ctx->debug) {
-            fprintf(stderr, "Invalid IP address: %s\n", ctx_tcp->ip);
+            syslog(LOG_INFO, "Invalid IP address: %s\n", ctx_tcp->ip);
         }
         close(ctx->s);
         ctx->s = -1;
@@ -368,7 +371,7 @@ static int _modbus_tcp_connect(modbus_t *ctx)
         ctx->s = -1;
         return -1;
     }
-
+    closelog();
     return 0;
 }
 
@@ -396,12 +399,13 @@ static int _modbus_tcp_pi_connect(modbus_t *ctx)
     ai_hints.ai_addr = NULL;
     ai_hints.ai_canonname = NULL;
     ai_hints.ai_next = NULL;
-
+    
     ai_list = NULL;
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     rc = getaddrinfo(ctx_tcp_pi->node, ctx_tcp_pi->service, &ai_hints, &ai_list);
     if (rc != 0) {
         if (ctx->debug) {
-            fprintf(stderr, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
+            syslog(LOG_INFO, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
         }
         errno = ECONNREFUSED;
         return -1;
@@ -427,7 +431,7 @@ static int _modbus_tcp_pi_connect(modbus_t *ctx)
             _modbus_tcp_set_ipv4_options(s);
 
         if (ctx->debug) {
-            printf("Connecting to [%s]:%s\n", ctx_tcp_pi->node, ctx_tcp_pi->service);
+            syslog(LOG_INFO,"Connecting to [%s]:%s\n", ctx_tcp_pi->node, ctx_tcp_pi->service);
         }
 
         rc = _connect(s, ai_ptr->ai_addr, ai_ptr->ai_addrlen, &ctx->response_timeout);
@@ -445,7 +449,7 @@ static int _modbus_tcp_pi_connect(modbus_t *ctx)
     if (ctx->s < 0) {
         return -1;
     }
-
+    closelog();
     return 0;
 }
 
@@ -510,7 +514,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
     struct sockaddr_in addr;
     modbus_tcp_t *ctx_tcp;
     int rc;
-
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx == NULL) {
         errno = EINVAL;
         return -1;
@@ -554,7 +558,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
         rc = inet_pton(addr.sin_family, ctx_tcp->ip, &(addr.sin_addr));
         if (rc <= 0) {
             if (ctx->debug) {
-                fprintf(stderr, "Invalid IP address: %s\n", ctx_tcp->ip);
+                syslog(LOG_INFO, "Invalid IP address: %s\n", ctx_tcp->ip);
             }
             close(new_s);
             return -1;
@@ -570,7 +574,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
         close(new_s);
         return -1;
     }
-
+    closelog()
     return new_s;
 }
 
@@ -584,6 +588,7 @@ int modbus_tcp_pi_listen(modbus_t *ctx, int nb_connection)
     const char *service;
     int new_s;
     modbus_tcp_pi_t *ctx_tcp_pi;
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 
     if (ctx == NULL) {
         errno = EINVAL;
@@ -626,7 +631,7 @@ int modbus_tcp_pi_listen(modbus_t *ctx, int nb_connection)
     rc = getaddrinfo(node, service, &ai_hints, &ai_list);
     if (rc != 0) {
         if (ctx->debug) {
-            fprintf(stderr, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
+            syslog(LOG_INFO, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
         }
         errno = ECONNREFUSED;
         return -1;
@@ -686,7 +691,7 @@ int modbus_tcp_pi_listen(modbus_t *ctx, int nb_connection)
     if (new_s < 0) {
         return -1;
     }
-
+    closelog();
     return new_s;
 }
 
@@ -699,7 +704,7 @@ int modbus_tcp_accept(modbus_t *ctx, int *s)
         errno = EINVAL;
         return -1;
     }
-
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     addrlen = sizeof(addr);
 #ifdef HAVE_ACCEPT4
     /* Inherit socket flags and use accept4 call */
@@ -715,12 +720,12 @@ int modbus_tcp_accept(modbus_t *ctx, int *s)
     if (ctx->debug) {
         char buf[INET_ADDRSTRLEN];
         if (inet_ntop(AF_INET, &(addr.sin_addr), buf, INET_ADDRSTRLEN) == NULL) {
-            fprintf(stderr, "Client connection accepted from unparsable IP.\n");
+            syslog(LOG_INFO, "Client connection accepted from unparsable IP.\n");
         } else {
             printf("Client connection accepted from %s.\n", buf);
         }
     }
-
+    closelog();
     return ctx->s;
 }
 
@@ -733,7 +738,7 @@ int modbus_tcp_pi_accept(modbus_t *ctx, int *s)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     addrlen = sizeof(addr);
 #ifdef HAVE_ACCEPT4
     /* Inherit socket flags and use accept4 call */
@@ -749,12 +754,12 @@ int modbus_tcp_pi_accept(modbus_t *ctx, int *s)
     if (ctx->debug) {
         char buf[INET6_ADDRSTRLEN];
         if (inet_ntop(AF_INET6, &(addr.sin6_addr), buf, INET6_ADDRSTRLEN) == NULL) {
-            fprintf(stderr, "Client connection accepted from unparsable IP.\n");
+            syslog(LOG_INFO, "Client connection accepted from unparsable IP.\n");
         } else {
             printf("Client connection accepted from %s.\n", buf);
         }
     }
-
+closelog();
     return ctx->s;
 }
 
@@ -762,10 +767,11 @@ static int
 _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_to_read)
 {
     int s_rc;
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     while ((s_rc = select(ctx->s + 1, rset, NULL, NULL, tv)) == -1) {
         if (errno == EINTR) {
             if (ctx->debug) {
-                fprintf(stderr, "A non blocked signal was caught\n");
+                syslog(LOG_INFO, "A non blocked signal was caught\n");
             }
             /* Necessary after an error */
             FD_ZERO(rset);
@@ -779,7 +785,7 @@ _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
         errno = ETIMEDOUT;
         return -1;
     }
-
+    closelog();
     return s_rc;
 }
 
@@ -858,7 +864,7 @@ modbus_t *modbus_new_tcp(const char *ip, int port)
     modbus_tcp_t *ctx_tcp;
     size_t dest_size;
     size_t ret_size;
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 #if defined(OS_BSD)
     /* MSG_NOSIGNAL is unsupported on *BSD so we install an ignore
        handler for SIGPIPE. */
@@ -867,7 +873,7 @@ modbus_t *modbus_new_tcp(const char *ip, int port)
     sa.sa_handler = SIG_IGN;
     if (sigaction(SIGPIPE, &sa, NULL) < 0) {
         /* The debug flag can't be set here... */
-        fprintf(stderr, "Could not install SIGPIPE handler.\n");
+        syslog(LOG_INFO, "Could not install SIGPIPE handler.\n");
         return NULL;
     }
 #endif
@@ -895,14 +901,14 @@ modbus_t *modbus_new_tcp(const char *ip, int port)
         dest_size = sizeof(char) * 16;
         ret_size = strlcpy(ctx_tcp->ip, ip, dest_size);
         if (ret_size == 0) {
-            fprintf(stderr, "The IP string is empty\n");
+            syslog(LOG_INFO, "The IP string is empty\n");
             modbus_free(ctx);
             errno = EINVAL;
             return NULL;
         }
 
         if (ret_size >= dest_size) {
-            fprintf(stderr, "The IP string has been truncated\n");
+            syslog(LOG_INFO, "The IP string has been truncated\n");
             modbus_free(ctx);
             errno = EINVAL;
             return NULL;
@@ -912,7 +918,7 @@ modbus_t *modbus_new_tcp(const char *ip, int port)
     }
     ctx_tcp->port = port;
     ctx_tcp->t_id = 0;
-
+closelog();
     return ctx;
 }
 
