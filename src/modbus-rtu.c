@@ -271,7 +271,7 @@ openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
         if (ctx->debug) {
             syslog(LOG_INFO, "Sending request using RTS signal\n");
         }
-
+    closelog();
         ctx_rtu->set_rts(ctx, ctx_rtu->rts == MODBUS_RTU_RTS_UP);
         usleep(ctx_rtu->rts_delay);
 
@@ -294,7 +294,7 @@ static int _modbus_rtu_receive(modbus_t *ctx, uint8_t *req)
 {
     int rc;
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
-
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx_rtu->confirmation_to_ignore) {
         _modbus_receive_msg(ctx, req, MSG_CONFIRMATION);
         /* Ignore errors and reset the flag */
@@ -310,6 +310,7 @@ static int _modbus_rtu_receive(modbus_t *ctx, uint8_t *req)
             ctx_rtu->confirmation_to_ignore = TRUE;
         }
     }
+    closelog();
     return rc;
 }
 
@@ -321,7 +322,7 @@ static ssize_t _modbus_rtu_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
     return read(ctx->s, rsp, rsp_length);
 #endif
 }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 static int _modbus_rtu_flush(modbus_t *);
 
 static int _modbus_rtu_pre_check_confirmation(modbus_t *ctx,
@@ -338,6 +339,7 @@ static int _modbus_rtu_pre_check_confirmation(modbus_t *ctx,
                     rsp[0],
                     req[0]);
         }
+        closelog();
         errno = EMBBADSLAVE;
         return -1;
     } else {
@@ -353,7 +355,7 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
     uint16_t crc_calculated;
     uint16_t crc_received;
     int slave = msg[0];
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     /* Filter on the Modbus unit identifier (slave) in RTU mode to avoid useless
      * CRC computing. */
     if (slave != ctx->slave && slave != MODBUS_BROADCAST_ADDRESS) {
@@ -361,6 +363,7 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
             syslog(LOG_INFO,"Request for slave %d ignored (not %d)\n", slave, ctx->slave);
         }
         /* Following call to check_confirmation handles this error */
+        
         return 0;
     }
 
@@ -382,6 +385,7 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
             _modbus_rtu_flush(ctx);
         }
         errno = EMBBADCRC;
+        closelog();
         return -1;
     }
 }
@@ -392,7 +396,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
 {
     DCB dcb;
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->debug) {
        syslog(LOG_INFO,"Opening %s at %d bauds (%c, %d, %d)\n",
                ctx_rtu->device,
@@ -502,13 +506,14 @@ static int _modbus_rtu_connect(modbus_t *ctx)
         ctx_rtu->w_ser.fd = INVALID_HANDLE_VALUE;
         return -1;
     }
-
+closelog();
     return 0;
 }
 #else
 
 static speed_t _get_termios_speed(int baud, int debug)
 {
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     speed_t speed;
 
     switch (baud) {
@@ -615,8 +620,9 @@ static speed_t _get_termios_speed(int baud, int debug)
             syslog(LOG_INFO, "WARNING Unknown baud rate %d (B9600 used)\n", baud);
         }
     }
-
+ closelog();
     return speed;
+   
 }
 
 /* POSIX */
@@ -626,6 +632,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     int flags;
     speed_t speed;
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 
     if (ctx->debug) {
         syslog(LOG_INFO,"Opening %s at %d bauds (%c, %d, %d)\n",
@@ -861,7 +868,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
         ctx->s = -1;
         return -1;
     }
-
+    closelog();
     return 0;
 }
 #endif
@@ -885,7 +892,7 @@ int modbus_rtu_set_serial_mode(modbus_t *ctx, int mode)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCSRS485
         modbus_rtu_t *ctx_rtu = ctx->backend_data;
@@ -930,6 +937,7 @@ int modbus_rtu_set_serial_mode(modbus_t *ctx, int mode)
 
     /* Wrong backend and invalid mode specified */
     errno = EINVAL;
+    closelog();
     return -1;
 }
 
@@ -939,7 +947,7 @@ int modbus_rtu_get_serial_mode(modbus_t *ctx)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCSRS485
         modbus_rtu_t *ctx_rtu = ctx->backend_data;
@@ -948,6 +956,7 @@ int modbus_rtu_get_serial_mode(modbus_t *ctx)
         if (ctx->debug) {
             syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -963,7 +972,7 @@ int modbus_rtu_get_rts(modbus_t *ctx)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCM_RTS
         modbus_rtu_t *ctx_rtu = ctx->backend_data;
@@ -972,6 +981,7 @@ int modbus_rtu_get_rts(modbus_t *ctx)
         if (ctx->debug) {
             syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -987,7 +997,7 @@ int modbus_rtu_set_rts(modbus_t *ctx, int mode)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCM_RTS
         modbus_rtu_t *ctx_rtu = ctx->backend_data;
@@ -1008,6 +1018,7 @@ int modbus_rtu_set_rts(modbus_t *ctx, int mode)
         if (ctx->debug) {
             syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -1023,7 +1034,7 @@ int modbus_rtu_set_custom_rts(modbus_t *ctx, void (*set_rts)(modbus_t *ctx, int 
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCM_RTS
         modbus_rtu_t *ctx_rtu = ctx->backend_data;
@@ -1033,6 +1044,7 @@ int modbus_rtu_set_custom_rts(modbus_t *ctx, void (*set_rts)(modbus_t *ctx, int 
         if (ctx->debug) {
             syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -1048,7 +1060,7 @@ int modbus_rtu_get_rts_delay(modbus_t *ctx)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCM_RTS
         modbus_rtu_t *ctx_rtu;
@@ -1058,6 +1070,7 @@ int modbus_rtu_get_rts_delay(modbus_t *ctx)
         if (ctx->debug) {
            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -1073,7 +1086,7 @@ int modbus_rtu_set_rts_delay(modbus_t *ctx, int us)
         errno = EINVAL;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_RTU) {
 #if HAVE_DECL_TIOCM_RTS
         modbus_rtu_t *ctx_rtu;
@@ -1084,6 +1097,7 @@ int modbus_rtu_set_rts_delay(modbus_t *ctx, int us)
         if (ctx->debug) {
             syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
+        closelog();
         errno = ENOTSUP;
         return -1;
 #endif
@@ -1097,7 +1111,7 @@ static void _modbus_rtu_close(modbus_t *ctx)
 {
     /* Restore line settings and close file descriptor in RTU mode */
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 #if defined(_WIN32)
     /* Revert settings */
     if (!SetCommState(ctx_rtu->w_ser.fd, &ctx_rtu->old_dcb) && ctx->debug) {
@@ -1111,6 +1125,7 @@ static void _modbus_rtu_close(modbus_t *ctx)
                 "ERROR Error while closing handle (LastError %d)\n",
                 (int) GetLastError());
     }
+    closelog();
 #else
     if (ctx->s >= 0) {
         tcsetattr(ctx->s, TCSANOW, &ctx_rtu->old_tios);
@@ -1118,6 +1133,7 @@ static void _modbus_rtu_close(modbus_t *ctx)
         ctx->s = -1;
     }
 #endif
+
 }
 
 static int _modbus_rtu_flush(modbus_t *ctx)
@@ -1142,7 +1158,7 @@ _modbus_rtu_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
         errno = ETIMEDOUT;
         return -1;
     }
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (s_rc < 0) {
         return -1;
     }
@@ -1152,6 +1168,7 @@ _modbus_rtu_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
             if (ctx->debug) {
                syslog(LOG_INFO, "A non blocked signal was caught\n");
             }
+            closelog();
             /* Necessary after an error */
             FD_ZERO(rset);
             FD_SET(ctx->s, rset);
@@ -1211,7 +1228,7 @@ modbus_new_rtu(const char *device, int baud, char parity, int data_bit, int stop
 {
     modbus_t *ctx;
     modbus_rtu_t *ctx_rtu;
-
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     /* Check device argument */
     if (device == NULL || *device == 0) {
         syslog(LOG_INFO, "The device string is empty\n");
@@ -1287,6 +1304,6 @@ modbus_new_rtu(const char *device, int baud, char parity, int data_bit, int stop
 #endif
 
     ctx_rtu->confirmation_to_ignore = FALSE;
-
+closelog();
     return ctx;
 }
