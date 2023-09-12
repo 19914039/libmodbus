@@ -322,7 +322,7 @@ static ssize_t _modbus_rtu_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
     return read(ctx->s, rsp, rsp_length);
 #endif
 }
-openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
+
 static int _modbus_rtu_flush(modbus_t *);
 
 static int _modbus_rtu_pre_check_confirmation(modbus_t *ctx,
@@ -332,6 +332,7 @@ static int _modbus_rtu_pre_check_confirmation(modbus_t *ctx,
 {
     /* Check responding slave is the slave we requested (except for broacast
      * request) */
+    openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (req[0] != rsp[0] && req[0] != MODBUS_BROADCAST_ADDRESS) {
         if (ctx->debug) {
             syslog(LOG_ERR,
