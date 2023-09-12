@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
@@ -254,6 +255,7 @@ static void _modbus_rtu_ioctl_rts(modbus_t *ctx, int on)
 
 static ssize_t _modbus_rtu_send(modbus_t *ctx, const uint8_t *req, int req_length)
 {
+openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
 #if defined(_WIN32)
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
     DWORD n_bytes = 0;
@@ -267,7 +269,7 @@ static ssize_t _modbus_rtu_send(modbus_t *ctx, const uint8_t *req, int req_lengt
         ssize_t size;
 
         if (ctx->debug) {
-            fprintf(stderr, "Sending request using RTS signal\n");
+            syslog(LOG_INFO, "Sending request using RTS signal\n");
         }
 
         ctx_rtu->set_rts(ctx, ctx_rtu->rts == MODBUS_RTU_RTS_UP);
@@ -299,7 +301,7 @@ static int _modbus_rtu_receive(modbus_t *ctx, uint8_t *req)
         ctx_rtu->confirmation_to_ignore = FALSE;
         rc = 0;
         if (ctx->debug) {
-            printf("Confirmation to ignore\n");
+           syslog(LOG_INFO,"Confirmation to ignore\n");
         }
     } else {
         rc = _modbus_receive_msg(ctx, req, MSG_INDICATION);
@@ -331,7 +333,7 @@ static int _modbus_rtu_pre_check_confirmation(modbus_t *ctx,
      * request) */
     if (req[0] != rsp[0] && req[0] != MODBUS_BROADCAST_ADDRESS) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_ERR,
                     "The responding slave %d isn't the requested slave %d\n",
                     rsp[0],
                     req[0]);
@@ -356,7 +358,7 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
      * CRC computing. */
     if (slave != ctx->slave && slave != MODBUS_BROADCAST_ADDRESS) {
         if (ctx->debug) {
-            printf("Request for slave %d ignored (not %d)\n", slave, ctx->slave);
+            syslog(LOG_INFO,"Request for slave %d ignored (not %d)\n", slave, ctx->slave);
         }
         /* Following call to check_confirmation handles this error */
         return 0;
@@ -370,7 +372,7 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
         return msg_length;
     } else {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_ERR,
                     "ERROR CRC received 0x%0X != CRC calculated 0x%0X\n",
                     crc_received,
                     crc_calculated);
@@ -392,7 +394,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
 
     if (ctx->debug) {
-        printf("Opening %s at %d bauds (%c, %d, %d)\n",
+       syslog(LOG_INFO,"Opening %s at %d bauds (%c, %d, %d)\n",
                ctx_rtu->device,
                ctx_rtu->baud,
                ctx_rtu->parity,
@@ -413,7 +415,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     /* Error checking */
     if (ctx_rtu->w_ser.fd == INVALID_HANDLE_VALUE) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_ERR,
                     "ERROR Can't open the device %s (LastError %d)\n",
                     ctx_rtu->device,
                     (int) GetLastError());
@@ -425,7 +427,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     ctx_rtu->old_dcb.DCBlength = sizeof(DCB);
     if (!GetCommState(ctx_rtu->w_ser.fd, &ctx_rtu->old_dcb)) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_ERR,
                     "ERROR Error getting configuration (LastError %d)\n",
                     (int) GetLastError());
         }
@@ -492,7 +494,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     /* Setup port */
     if (!SetCommState(ctx_rtu->w_ser.fd, &dcb)) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_ERR,
                     "ERROR Error setting new configuration (LastError %d)\n",
                     (int) GetLastError());
         }
@@ -626,7 +628,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
 
     if (ctx->debug) {
-        printf("Opening %s at %d bauds (%c, %d, %d)\n",
+        syslog(LOG_INFO,"Opening %s at %d bauds (%c, %d, %d)\n",
                ctx_rtu->device,
                ctx_rtu->baud,
                ctx_rtu->parity,
@@ -649,7 +651,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     ctx->s = open(ctx_rtu->device, flags);
     if (ctx->s < 0) {
         if (ctx->debug) {
-            fprintf(stderr,
+            syslog(LOG_INFO,
                     "ERROR Can't open the device %s (%s)\n",
                     ctx_rtu->device,
                     strerror(errno));
@@ -919,7 +921,7 @@ int modbus_rtu_set_serial_mode(modbus_t *ctx, int mode)
         }
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -944,7 +946,7 @@ int modbus_rtu_get_serial_mode(modbus_t *ctx)
         return ctx_rtu->serial_mode;
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -968,7 +970,7 @@ int modbus_rtu_get_rts(modbus_t *ctx)
         return ctx_rtu->rts;
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -1004,7 +1006,7 @@ int modbus_rtu_set_rts(modbus_t *ctx, int mode)
         }
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -1029,7 +1031,7 @@ int modbus_rtu_set_custom_rts(modbus_t *ctx, void (*set_rts)(modbus_t *ctx, int 
         return 0;
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -1054,7 +1056,7 @@ int modbus_rtu_get_rts_delay(modbus_t *ctx)
         return ctx_rtu->rts_delay;
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+           syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -1080,7 +1082,7 @@ int modbus_rtu_set_rts_delay(modbus_t *ctx, int us)
         return 0;
 #else
         if (ctx->debug) {
-            fprintf(stderr, "This function isn't supported on your platform\n");
+            syslog(LOG_INFO, "This function isn't supported on your platform\n");
         }
         errno = ENOTSUP;
         return -1;
@@ -1099,13 +1101,13 @@ static void _modbus_rtu_close(modbus_t *ctx)
 #if defined(_WIN32)
     /* Revert settings */
     if (!SetCommState(ctx_rtu->w_ser.fd, &ctx_rtu->old_dcb) && ctx->debug) {
-        fprintf(stderr,
+        syslog(LOG_INFO,
                 "ERROR Couldn't revert to configuration (LastError %d)\n",
                 (int) GetLastError());
     }
 
     if (!CloseHandle(ctx_rtu->w_ser.fd) && ctx->debug) {
-        fprintf(stderr,
+        syslog(LOG_INFO,
                 "ERROR Error while closing handle (LastError %d)\n",
                 (int) GetLastError());
     }
@@ -1148,7 +1150,7 @@ _modbus_rtu_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
     while ((s_rc = select(ctx->s + 1, rset, NULL, NULL, tv)) == -1) {
         if (errno == EINTR) {
             if (ctx->debug) {
-                fprintf(stderr, "A non blocked signal was caught\n");
+               syslog(LOG_INFO, "A non blocked signal was caught\n");
             }
             /* Necessary after an error */
             FD_ZERO(rset);
