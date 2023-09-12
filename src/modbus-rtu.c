@@ -612,7 +612,7 @@ static speed_t _get_termios_speed(int baud, int debug)
     default:
         speed = B9600;
         if (debug) {
-            fprintf(stderr, "WARNING Unknown baud rate %d (B9600 used)\n", baud);
+            syslog(LOG_INFO, "WARNING Unknown baud rate %d (B9600 used)\n", baud);
         }
     }
 
@@ -1214,14 +1214,14 @@ modbus_new_rtu(const char *device, int baud, char parity, int data_bit, int stop
 
     /* Check device argument */
     if (device == NULL || *device == 0) {
-        fprintf(stderr, "The device string is empty\n");
+        syslog(LOG_INFO, "The device string is empty\n");
         errno = EINVAL;
         return NULL;
     }
 
     /* Check baud argument */
     if (baud == 0) {
-        fprintf(stderr, "The baud rate value must not be zero\n");
+        syslog(LOG_INFO, "The baud rate value must not be zero\n");
         errno = EINVAL;
         return NULL;
     }
