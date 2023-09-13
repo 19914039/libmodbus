@@ -349,7 +349,7 @@ static int _modbus_tcp_connect(modbus_t *ctx)
     }
 
     if (ctx->debug) {
-        printf("Connecting to %s:%d\n", ctx_tcp->ip, ctx_tcp->port);
+        syslog(LOG_INFO,"Connecting to %s:%d\n", ctx_tcp->ip, ctx_tcp->port);
     }
 
     addr.sin_family = AF_INET;
@@ -722,7 +722,7 @@ int modbus_tcp_accept(modbus_t *ctx, int *s)
         if (inet_ntop(AF_INET, &(addr.sin_addr), buf, INET_ADDRSTRLEN) == NULL) {
             syslog(LOG_INFO, "Client connection accepted from unparsable IP.\n");
         } else {
-            printf("Client connection accepted from %s.\n", buf);
+            syslog(LOG_INFO,"Client connection accepted from %s.\n", buf);
         }
     }
     closelog();
@@ -756,7 +756,7 @@ openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
         if (inet_ntop(AF_INET6, &(addr.sin6_addr), buf, INET6_ADDRSTRLEN) == NULL) {
             syslog(LOG_INFO, "Client connection accepted from unparsable IP.\n");
         } else {
-            printf("Client connection accepted from %s.\n", buf);
+            syslog(LOG_INFO,"Client connection accepted from %s.\n", buf);
         }
     }
 closelog();
