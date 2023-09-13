@@ -574,7 +574,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
         close(new_s);
         return -1;
     }
-    closelog()
+    closelog();
     return new_s;
 }
 
