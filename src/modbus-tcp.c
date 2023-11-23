@@ -69,7 +69,7 @@ static int _modbus_tcp_init_win32(void)
     WSADATA wsaData;
     openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        syslog(LOG_INFO,
+        syslog(LOG_ERR,
                 "WSAStartup() returned error code %d\n",
                 (unsigned int) GetLastError());
         errno = EIO;
@@ -203,7 +203,7 @@ static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
     /* Check transaction ID */
     if (req[0] != rsp[0] || req[1] != rsp[1]) {
         if (ctx->debug) {
-            syslog(LOG_INFO,
+            syslog(LOG_ERR,
                     "Invalid transaction ID received 0x%X (not 0x%X)\n",
                     (rsp[0] << 8) + rsp[1],
                     (req[0] << 8) + req[1]);
@@ -216,7 +216,7 @@ static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
     protocol_id = (rsp[2] << 8) + rsp[3];
     if (protocol_id != 0x0) {
         if (ctx->debug) {
-            syslog(LOG_INFO, "Invalid protocol ID received 0x%X (not 0x0)\n", protocol_id);
+            syslog(LOG_ERR, "Invalid protocol ID received 0x%X (not 0x0)\n", protocol_id);
         }
         errno = EMBBADDATA;
         return -1;
@@ -357,7 +357,7 @@ static int _modbus_tcp_connect(modbus_t *ctx)
     rc = inet_pton(addr.sin_family, ctx_tcp->ip, &(addr.sin_addr));
     if (rc <= 0) {
         if (ctx->debug) {
-            syslog(LOG_INFO, "Invalid IP address: %s\n", ctx_tcp->ip);
+            syslog(LOG_ERR, "Invalid IP address: %s\n", ctx_tcp->ip);
         }
         close(ctx->s);
         ctx->s = -1;
@@ -405,7 +405,7 @@ static int _modbus_tcp_pi_connect(modbus_t *ctx)
     rc = getaddrinfo(ctx_tcp_pi->node, ctx_tcp_pi->service, &ai_hints, &ai_list);
     if (rc != 0) {
         if (ctx->debug) {
-            syslog(LOG_INFO, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
+            syslog(LOG_ERR, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
         }
         errno = ECONNREFUSED;
         return -1;
@@ -558,7 +558,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
         rc = inet_pton(addr.sin_family, ctx_tcp->ip, &(addr.sin_addr));
         if (rc <= 0) {
             if (ctx->debug) {
-                syslog(LOG_INFO, "Invalid IP address: %s\n", ctx_tcp->ip);
+                syslog(LOG_ERR, "Invalid IP address: %s\n", ctx_tcp->ip);
             }
             close(new_s);
             return -1;
@@ -631,7 +631,7 @@ int modbus_tcp_pi_listen(modbus_t *ctx, int nb_connection)
     rc = getaddrinfo(node, service, &ai_hints, &ai_list);
     if (rc != 0) {
         if (ctx->debug) {
-            syslog(LOG_INFO, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
+            syslog(LOG_ERR, "Error returned by getaddrinfo: %s\n", gai_strerror(rc));
         }
         errno = ECONNREFUSED;
         return -1;
@@ -901,14 +901,14 @@ openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
         dest_size = sizeof(char) * 16;
         ret_size = strlcpy(ctx_tcp->ip, ip, dest_size);
         if (ret_size == 0) {
-            syslog(LOG_INFO, "The IP string is empty\n");
+            syslog(LOG_ERR, "The IP string is empty\n");
             modbus_free(ctx);
             errno = EINVAL;
             return NULL;
         }
 
         if (ret_size >= dest_size) {
-            syslog(LOG_INFO, "The IP string has been truncated\n");
+            syslog(LOG_ERR, "The IP string has been truncated\n");
             modbus_free(ctx);
             errno = EINVAL;
             return NULL;
