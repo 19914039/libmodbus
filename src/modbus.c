@@ -170,13 +170,15 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
 {
     int rc;
     int i;
+    char resp[256];
     openlog("slog", LOG_PID|LOG_CONS, LOG_USER);
     msg_length = ctx->backend->send_msg_pre(msg, msg_length);
 
     if (ctx->debug) {
         // for (i = 0; i < msg_length; i++)
             // syslog(LOG_INFO,"[%.2X]", msg[i]);
-       syslog(LOG_INFO,"msg received is %s \n", msg);
+       memcpy (resp, msg, sizeof(msg))
+       syslog(LOG_INFO,"msg received is %s \n", resp);
     }
 
     /* In recovery mode, the write command will be issued until to be
@@ -472,7 +474,7 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
 
         /* Display the hex code of each character received */
         if (ctx->debug) {
-            syslog(LOG_INFO,"msg received is %s \n", msg);
+            // syslog(LOG_INFO,"msg received is %s \n", msg);
             // int i;
             // for (i = 0; i < rc; i++)
             //   syslog(LOG_INFO,"<%.2X>", msg[msg_length + i]);
