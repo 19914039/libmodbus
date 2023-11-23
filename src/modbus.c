@@ -176,10 +176,10 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
     msg_length = ctx->backend->send_msg_pre(msg, msg_length);
 
     if (ctx->debug) {
-        // for (i = 0; i < msg_length; i++)
+        for (i = 0; i < msg_length; i++)
             // syslog(LOG_INFO,"[%.2X]", msg[i]);
-       ptr += sprintf(ptr, "%.2X", msg[i]);
-       syslog(LOG_INFO,"msg received is %s \n", resp);
+        ptr += sprintf(ptr, "%.2X", msg[i]);
+        syslog(LOG_INFO,"msg received is %s \n", resp);
     }
 
     /* In recovery mode, the write command will be issued until to be
